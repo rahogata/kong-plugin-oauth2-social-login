@@ -1,6 +1,6 @@
-#Kong OAuth2 plugin customized.
+# Kong OAuth2 plugin customized.
 
-##Roadmap
+## Roadmap
 * Scope validation for each endpoints in a URI.
 * Adding and configuring external identity providers.
 * Sending JWT containing user context to the upstream target.
