@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<buildpath>
+	<buildpathentry kind="src" path="kong/plugins/oauth2-full"/>
+	<buildpathentry kind="src" path="spec/oauth2-full"/>
+	<buildpathentry kind="con" path="org.eclipse.ldt.ExecutionEnvironmentContainer/lua/5.1"/>
+</buildpath>
