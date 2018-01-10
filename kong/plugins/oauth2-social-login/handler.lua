@@ -1,39 +1,58 @@
 local BasePlugin = require "kong.plugins.base_plugin"
-local access = require "kong.plugins.oauth2-authenticators.access"
+local authorize = require "kong.plugins.oauth2-social-login.authorize"
 local singletons = require "kong.singletons"
+local utils = require "kong.tools.utils"
+local callback = require "kong.plugins.oauth2-social-login.callback"
 
-local AuthenticationHandler = BasePlugin:extend()
+local SocialLoginHandler = BasePlugin:extend()
 
-local string_find = string.find
+local string_match = string.match
 
-function AuthenticationHandler:new()
-  AuthenticationHandler.super.new(self, "oauth2-authenticators")
-end
-
-local function add_providers(conf)
+local function get_providers()
   local providers = {}
--- request method, URL, parameters, response type, name, logo
-  if #conf.global_providers > 0 then
-    local provider_daos = singletons.dao.social_oauth2_providers:find_all({ name = conf.global_providers, is_global = true })
+  local provider_entities = singletons.dao.social_oauth2_providers:find_all()
+  for v in ipairs(provider_entities) do
+    table.insert(providers, { name = v.name, logo = v.logo, method = "GET", uri = "/oauth2/authorize/" .. v.name, response_type = "REDIRECT" })
   end
 end
 
-function AuthenticationHandler:access(conf)
-  AuthenticationHandler.super.access(self)
-  -- GET /oauth2/authorize retrieve all the authenticators for the API or global.
+function SocialLoginHandler:new()
+  SocialLoginHandler.super.new(self, "oauth2-social-login")
+end
+
+function SocialLoginHandler:access(conf)
+  SocialLoginHandler.super.access(self)
+  if ngx.ctx.authenticated_credential and conf.anonymous ~= "" then
+    -- we're already authenticated, and we're configured for using anonymous,
+    -- hence we're in a logical OR between auth methods and we're already done.
+    return
+  end
+  -- GET /oauth2/authorize retrieve all the authenticators for the API.
+
   if ngx.ctx.get_method() == "GET" then
     local uri = ngx.var.uri
-
-    local from, _ = string_find(uri, "/oauth2/authorize", nil, true)
+    local from
+    from, _ = string_match(uri, "/oauth2/authorize[%s/]*$", nil, true)
     if from then
-      local providers = add_providers(conf)
+      utils.table_merge(ngx.ctx.auth_providers, get_providers())
+      return
+    end
+
+    from, _ = string_match(uri, "/oauth2/authorize/%w+", nil, true)
+    if from then
+      authorize.execute(conf)
+      return
+    end
+
+    from, _ = string_match(uri, "/oauth2/social/callback")
+    if from then
+      callback.execute(conf)
+      return
     end
   end
-
-  access.execute(conf)
 end
 
-AuthenticationHandler.PRIORITY = 1006
-AuthenticationHandler.VERSION = "0.1.0"
+SocialLoginHandler.PRIORITY = 1006
+SocialLoginHandler.VERSION = "0.1.0"
 
-return AuthenticationHandler
+return SocialLoginHandler

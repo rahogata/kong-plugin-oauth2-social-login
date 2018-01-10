@@ -1,23 +1,23 @@
 local helpers = require "spec.helpers"
 
-describe("Demo-Plugin: myplugin (access)", function()
+describe("OAuth2-Social-Login-Plugin: oauth2-social-login (access)", function()
   local client
 
   setup(function()
-    local api1 = assert(helpers.dao.apis:insert { 
-        name = "api-1", 
-        hosts = { "test1.com" }, 
+    local api1 = assert(helpers.dao.apis:insert {
+        name = "api-1",
+        hosts = { "test1.com" },
         upstream_url = "http://mockbin.com",
     })
 
     assert(helpers.dao.plugins:insert {
       api_id = api1.id,
-      name = "myplugin",
+      name = "oauth2-social-login",
     })
 
     -- start kong, while setting the config item `custom_plugins` to make sure our
     -- plugin gets loaded
-    assert(helpers.start_kong {custom_plugins = "myplugin"})
+    assert(helpers.start_kong {custom_plugins = "oauth2-social-login"})
   end)
 
   teardown(function()

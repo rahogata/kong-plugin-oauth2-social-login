@@ -22,18 +22,17 @@ end
 local SOCIAL_OAUTH2_PROVIDERS = {
   primary_key = {"id"},
   table = "social_oauth2_providers",
+  cache_key = { "name" },
   fields = {
     id = { type = "id", dao_insert_value = true },
-    name = { type = "string", required = true },
-    api_id = { type = "id", required = false, foreign = "apis:id" },
-    client_id = { type = "string", required = true },
+    name = { type = "string", required = true, unique = true },
+    client_id = { type = "string", required = true, unique = true },
     client_secret = { type = "string", required = true },
     callback_uri = { type = "array", required = true, func = validate_uris },
     authorization_uri = { type = "string", required = true, func = validate_uris },
     token_uri = { type = "string", required = true, func = validate_uris },
     profile_uri = { type = "string", required = true, func = validate_uris },
     scopes = { type = "array", required = true },
-    is_global = { type = "boolean", required = true, default = true },
     logo = { type = "string", required = false },
     created_at = { type = "timestamp", immutable = true, dao_insert_value = true }
   }

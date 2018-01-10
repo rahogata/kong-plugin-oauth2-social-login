@@ -9,17 +9,11 @@ local function check_user(anonymous)
   return false, "the anonymous user must be empty or a valid uuid"
 end
 
-local function check_mandatory_scope(v, t)
-  if v and not t.scopes then
-    return false, "To set a mandatory scope you also need to create available scopes"
-  end
-  return true
-end
-
 return {
   no_consumer = true,
   fields = {
+    scopes = { required = true, type = "array" },
     provision_key = { required = true, unique = true, type = "string" },
-    global_providers = { type = "array", required = false }
+    anonymous = { required = false, type = "string", default = "", func = check_user }
   }
 }
