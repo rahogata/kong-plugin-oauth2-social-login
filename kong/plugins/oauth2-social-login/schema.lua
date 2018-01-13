@@ -12,8 +12,7 @@ end
 return {
   no_consumer = true,
   fields = {
-    scopes = { required = true, type = "array" },
-    provision_key = { required = true, unique = true, type = "string" },
-    anonymous = { required = false, type = "string", default = "", func = check_user }
+    anonymous = { required = false, type = "string", default = "", func = check_user },
+    callback_url = { type = "string", required = true }
   }
 }

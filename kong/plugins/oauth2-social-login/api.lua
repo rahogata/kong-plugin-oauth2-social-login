@@ -16,7 +16,7 @@ return {
   },
 
   ["/social_providers/:name"] = {
-    GET = function(self, dao_factory, helpers)
+    before = function(self, dao_factory, helpers)
       local providers, err = crud.find_by_id_or_field(
         dao_factory.social_oauth2_providers,
         nil,
@@ -28,8 +28,15 @@ return {
       elseif next(providers) == nil then
         return helpers.responses.send_HTTP_NOT_FOUND()
       end
-
-      return helpers.responses.send_HTTP_OK(providers[1])
+      self.provider = providers[1]
+    end,
+    
+    GET = function(self, dao_factory, helpers)
+      return helpers.responses.send_HTTP_OK(self.provider)
+    end,
+    
+    DELETE = function(self, dao_factory)
+      crud.delete(self.provider, dao_factory.social_oauth2_providers)
     end
   }
 }

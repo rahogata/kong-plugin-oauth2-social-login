@@ -8,12 +8,30 @@ local SocialLoginHandler = BasePlugin:extend()
 
 local string_match = string.match
 
+local function list_merge(a, b)
+  local temp
+  if not a then
+    a = {}
+  end
+  if not b then
+    b = {}
+  end
+  if #a > #b then
+    temp = a
+    a = b
+    b = temp
+  end
+  for i, v in ipairs(a) do table.insert(b, v) end
+  return b
+end
+
 local function get_providers()
   local providers = {}
   local provider_entities = singletons.dao.social_oauth2_providers:find_all()
-  for v in ipairs(provider_entities) do
+  for i, v in ipairs(provider_entities) do
     table.insert(providers, { name = v.name, logo = v.logo, method = "GET", uri = "/oauth2/authorize/" .. v.name, response_type = "REDIRECT" })
   end
+  return providers
 end
 
 function SocialLoginHandler:new()
@@ -29,12 +47,12 @@ function SocialLoginHandler:access(conf)
   end
   -- GET /oauth2/authorize retrieve all the authenticators for the API.
 
-  if ngx.ctx.get_method() == "GET" then
+  if ngx.req.get_method() == "GET" then
     local uri = ngx.var.uri
     local from
     from, _ = string_match(uri, "/oauth2/authorize[%s/]*$", nil, true)
     if from then
-      utils.table_merge(ngx.ctx.auth_providers, get_providers())
+      ngx.ctx.auth_providers = list_merge(ngx.ctx.auth_providers, get_providers())
       return
     end
 

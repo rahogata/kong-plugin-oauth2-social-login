@@ -17,6 +17,7 @@ local CLIENT_ID = "client_id"
 local CLIENT_SECRET = "client_secret"
 local REDIRECT_URI = "redirect_uri"
 local ERROR = "error"
+local OAUTH2 = "oauth2"
 
 local function load_oauth2_credential_by_client_id_into_memory(client_id)
   local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
@@ -24,6 +25,15 @@ local function load_oauth2_credential_by_client_id_into_memory(client_id)
     return nil, err
   end
   return credentials[1]
+end
+
+local function load_oauth2_plugin_into_memory()
+  local oauth2_plugin, err
+  oauth2_plugin, err = singletons.dao.plugins:find_all({ api_id = ngx.ctx.api.id, name = OAUTH2 })[1]
+  if not oauth2_plugin then
+    oauth2_plugin, err = singletons.dao.plugins:find_all({ name = OAUTH2 })[1]
+  end
+  return oauth2_plugin
 end
 
 local function get_redirect_uri(client_id)
@@ -41,10 +51,7 @@ local function get_redirect_uri(client_id)
 end
 
 local function retrieve_parameters()
-  ngx.req.read_body()
-
-  -- OAuth2 parameters could be in both the querystring or body
-  return utils.table_merge(ngx.req.get_uri_args(), public_utils.get_body_args())
+  return ngx.req.get_uri_args()
 end
 
 local function retrieve_scopes(parameters, conf)
@@ -71,6 +78,10 @@ local function load_provider_by_name(provider_name)
     return providers[1]
 end
 
+local function load_new_session_state(session)
+	return session
+end
+
 function _M.execute(conf)
 
   local response_params = {}
@@ -86,9 +97,22 @@ function _M.execute(conf)
                                               load_provider_by_name,
                                               provider_name)
   if err then
-    return responses.send_HTTP_BAD_REQUEST("No provider found.")
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-
+  if not provider then
+    return responses.send_HTTP_BAD_REQUEST("no social identity provider found.")
+  end
+  
+  local plugin_cache_key = singletons.dao.plugins:cache_key(OAUTH2)
+  local oauth2_plugin, err = singletons.cache:get(plugin_cache_key, nil,
+  													load_oauth2_plugin_into_memory)
+  if err then
+    return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+  end
+  if not oauth2_plugin then
+    return responses.send_HTTP_BAD_REQUEST("no oauth2 plugin found.")
+  end
+  
   local parameters = retrieve_parameters()
   local response_type = parameters[RESPONSE_TYPE]
   if not response_type == CODE then
@@ -109,14 +133,20 @@ function _M.execute(conf)
   end
 
   -- Check scopes
-  local ok, scopes = retrieve_scopes(parameters, conf)
+  local ok, scopes = retrieve_scopes(parameters, oauth2_plugin.config)
   if not ok then
     response_params = scopes -- If it's not ok, then this is the error message
   end
 
   if not response_params[ERROR] then
-    local state = parameters[STATE] and parameters[STATE] .. "|" .. client_id or client_id
-    local authorization_url = provider.authorization_uri .. "?response_type=code&client_id=" .. provider.client_id .. "&redirect_uri=" .. provider.callback_uri .. "&scope=" .. table.concat(provider.scopes, " ") .. "&state=" .. state
+    local state_cache_key = utils.random_string();
+    local state, err = singletons.cache:get(state_cache_key, nil,
+    									load_new_session_state,
+    									{ client_state = parameters[STATE], client_id = client.id, redirect_url = redirect_uri, scopes = scopes, api_id = ngx.ctx.api.id })
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+    local authorization_url = provider.authorization_uri .. "?response_type=code&client_id=" .. provider.client_id .. "&redirect_uri=" .. conf.callback_url .. "&scope=" .. table.concat(provider.scopes, " ") .. "&state=" .. state_cache_key
     return ngx.redirect(authorization_url)
   end
 

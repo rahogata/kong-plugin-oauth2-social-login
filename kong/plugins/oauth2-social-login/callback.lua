@@ -1,6 +1,81 @@
+local responses = require "kong.tools.responses"
+local singletons = require "kong.singletons"
+
+local string_match = string.match
+local string_gmatch = string.gmatch
+
+local STATE = "state"
+local CODE = "code"
+local OAUTH2 ="oauth2"
+local ERROR = "error"
+local ACCESS_DENIED = "access_denied"
+local SERVER_ERROR = "server_error"
 
 local _M = {}
 
-function _M.execute(conf)
-
+local function retrieve_parameters()
+  return ngx.req.get_uri_args()
 end
+
+local function load_new_session_state(session)
+  return session
+end
+
+local function load_oauth2_plugin_into_memory(session)
+  local oauth2_plugin, err
+  oauth2_plugin, err = singletons.dao.plugins:find_all({ api_id = session.api_id, name = OAUTH2 })[1]
+  if not oauth2_plugin then
+    oauth2_plugin, err = singletons.dao.plugins:find_all({ name = OAUTH2 })[1]
+  end
+  return oauth2_plugin
+end
+
+function _M.execute(conf)
+  local parameters = retrieve_parameters()
+  if parameters[STATE] then
+    local state, err = singletons.cache:get(parameters[STATE], nil,
+    									load_new_session_state,
+    									nil)
+    if err then
+      return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
+    end
+    
+    if state then
+      singletons.cache:invalidate(parameters[STATE])
+    local query
+      if parameters[CODE] then
+        local plugin_cache_key = singletons.dao.plugins:cache_key(OAUTH2)
+        local oauth2_plugin, err = singletons.cache:get(plugin_cache_key, nil,
+  													load_oauth2_plugin_into_memory,
+  													state)
+        if err then
+          return ngx.redirect(state.redirect_url .. "?error=" .. SERVER_ERROR .. (state.client_state and "&state=" .. state.client_state or ""))
+        end
+        if not oauth2_plugin then
+          return ngx.redirect(state.redirect_url .. "?error=" .. SERVER_ERROR .. (state.client_state and "&state=" .. state.client_state or ""))
+        end
+        local api_id
+        if not oauth2_plugin.config.global_credentials then
+          api_id = state.api_id
+        end
+        local authorization_code, err = singletons.dao.oauth2_authorization_codes:insert({
+              api_id = api_id,
+              credential_id = state.client_id,
+              authenticated_userid = parameters[CODE],
+              scope = table.concat(state.scopes, " ")
+             }, {ttl = 300})
+
+        if err then
+          query = "error=" .. SERVER_ERROR
+        end
+        query = "code=" .. authorization_code.code
+      else
+        query = "error=" .. ACCESS_DENIED
+      end
+      return ngx.redirect(state.redirect_url .. "?" .. query .. (state.client_state and "&state=" .. state.client_state or ""))
+    end
+  end
+  return responses.send_HTTP_BAD_REQUEST({ [ERROR] = "access_denied" })
+end
+
+return _M
