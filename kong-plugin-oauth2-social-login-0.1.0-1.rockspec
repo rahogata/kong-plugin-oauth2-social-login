@@ -4,7 +4,6 @@ version = "0.1.0-1"
 -- whenever the source version changes, the rockspec should be reset to 1. The rockspec version is only
 -- updated (incremented) when this file changes, but the source remains the same.
 
--- TODO: This is the name to set in the Kong configuration `custom_plugins` setting.
 -- Here we extract it from the package name.
 local pluginName = package:match("^kong%-plugin%-(.+)$")  -- "oauth2-social-login"
 
@@ -30,7 +29,6 @@ build = {
     ["kong.plugins."..pluginName..".api"] = "kong/plugins/"..pluginName.."/api.lua",
     ["kong.plugins."..pluginName..".authorize"] = "kong/plugins/"..pluginName.."/authorize.lua",
     ["kong.plugins."..pluginName..".callback"] = "kong/plugins/"..pluginName.."/callback.lua",
-    ["kong.plugins."..pluginName..".daos"] = "kong/plugins/"..pluginName.."/daos.lua",
     ["kong.plugins."..pluginName..".handler"] = "kong/plugins/"..pluginName.."/handler.lua",
     ["kong.plugins."..pluginName..".schema"] = "kong/plugins/"..pluginName.."/schema.lua"
   }

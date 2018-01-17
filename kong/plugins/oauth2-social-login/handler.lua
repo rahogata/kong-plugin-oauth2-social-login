@@ -3,36 +3,13 @@ local authorize = require "kong.plugins.oauth2-social-login.authorize"
 local singletons = require "kong.singletons"
 local utils = require "kong.tools.utils"
 local callback = require "kong.plugins.oauth2-social-login.callback"
+local provider_utils = require "kong.plugins.auth-providers-repo.utils"
 
 local SocialLoginHandler = BasePlugin:extend()
 
 local string_match = string.match
 
-local function list_merge(a, b)
-  local temp
-  if not a then
-    a = {}
-  end
-  if not b then
-    b = {}
-  end
-  if #a > #b then
-    temp = a
-    a = b
-    b = temp
-  end
-  for i, v in ipairs(a) do table.insert(b, v) end
-  return b
-end
-
-local function get_providers()
-  local providers = {}
-  local provider_entities = singletons.dao.social_oauth2_providers:find_all()
-  for i, v in ipairs(provider_entities) do
-    table.insert(providers, { name = v.name, logo = v.logo, method = "GET", uri = "/oauth2/authorize/" .. v.name, response_type = "REDIRECT" })
-  end
-  return providers
-end
+local SOCIAL = "social"
 
 function SocialLoginHandler:new()
   SocialLoginHandler.super.new(self, "oauth2-social-login")
@@ -49,10 +26,9 @@ function SocialLoginHandler:access(conf)
 
   if ngx.req.get_method() == "GET" then
     local uri = ngx.var.uri
-    local from
-    from, _ = string_match(uri, "/oauth2/authorize[%s/]*$", nil, true)
+    local from, _ = string_match(uri, "/oauth2/authorize[%s/]*$", nil, true)
     if from then
-      ngx.ctx.auth_providers = list_merge(ngx.ctx.auth_providers, get_providers())
+      ngx.ctx.auth_providers = provider_utils.list_merge(ngx.ctx.auth_providers, provider_utils.get_providers(SOCIAL))
       return
     end
 

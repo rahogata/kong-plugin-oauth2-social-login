@@ -8,7 +8,7 @@ local MESSAGE = "message"
 local AuthProviderReflector = BasePlugin:extend()
 
 function AuthProviderReflector:new()
-  AuthProviderReflector.super.new(self, "auth-providers-reflector")
+  AuthProviderReflector.super.new(self, "auth-providers-repo")
 end
 
 function AuthProviderReflector:access(conf)
@@ -17,8 +17,8 @@ function AuthProviderReflector:access(conf)
     local uri = ngx.var.uri
     local from, _ = string_match(uri, "/oauth2/authorize[%s/]*$", nil, true)
     if from then
-      return responses.send(ngx.ctx.auth_providers and 200 or 404,
-      					ngx.ctx.auth_providers and ngx.ctx.auth_providers or { [MESSAGE] = "Providers not found." })
+      return responses.send(next(ngx.ctx.auth_providers) ~= nil and 200 or 404,
+      					next(ngx.ctx.auth_providers) ~= nil and ngx.ctx.auth_providers or { [MESSAGE] = "Providers not found." })
     end
   end
 end

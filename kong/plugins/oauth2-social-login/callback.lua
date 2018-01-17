@@ -1,5 +1,6 @@
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
+local provider_utils = require "kong.plugins.auth-providers-repo.utils"
 
 local string_match = string.match
 local string_gmatch = string.gmatch
@@ -13,40 +14,23 @@ local SERVER_ERROR = "server_error"
 
 local _M = {}
 
-local function retrieve_parameters()
-  return ngx.req.get_uri_args()
-end
-
-local function load_new_session_state(session)
-  return session
-end
-
-local function load_oauth2_plugin_into_memory(session)
-  local oauth2_plugin, err
-  oauth2_plugin, err = singletons.dao.plugins:find_all({ api_id = session.api_id, name = OAUTH2 })[1]
-  if not oauth2_plugin then
-    oauth2_plugin, err = singletons.dao.plugins:find_all({ name = OAUTH2 })[1]
-  end
-  return oauth2_plugin
-end
-
 function _M.execute(conf)
-  local parameters = retrieve_parameters()
+  local parameters = provider_utils.retrieve_parameters()
   if parameters[STATE] then
     local state, err = singletons.cache:get(parameters[STATE], nil,
-    									load_new_session_state,
+    									provider_utils.load_new_session_state,
     									nil)
     if err then
       return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
     end
-    
+
     if state then
       singletons.cache:invalidate(parameters[STATE])
     local query
       if parameters[CODE] then
         local plugin_cache_key = singletons.dao.plugins:cache_key(OAUTH2)
         local oauth2_plugin, err = singletons.cache:get(plugin_cache_key, nil,
-  													load_oauth2_plugin_into_memory,
+  													provider_utils.load_oauth2_plugin_into_memory,
   													state)
         if err then
           return ngx.redirect(state.redirect_url .. "?error=" .. SERVER_ERROR .. (state.client_state and "&state=" .. state.client_state or ""))
