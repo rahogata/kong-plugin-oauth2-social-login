@@ -26,7 +26,7 @@ function _M.execute(conf)
 
     if state then
       singletons.cache:invalidate(parameters[STATE])
-    local query
+      local query
       if parameters[CODE] then
         local plugin_cache_key = singletons.dao.plugins:cache_key(OAUTH2)
         local oauth2_plugin, err = singletons.cache:get(plugin_cache_key, nil,

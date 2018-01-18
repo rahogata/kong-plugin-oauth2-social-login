@@ -32,7 +32,7 @@ function SocialLoginHandler:access(conf)
       return
     end
 
-    from, _ = string_match(uri, "/oauth2/authorize/%w+", nil, true)
+    from, _ = string_match(uri, "/oauth2/authorize/" .. SOCIAL .."/%w+", nil, true)
     if from then
       authorize.execute(conf)
       return

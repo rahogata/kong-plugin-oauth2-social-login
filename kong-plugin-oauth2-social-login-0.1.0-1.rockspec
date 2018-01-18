@@ -11,7 +11,6 @@ supported_platforms = {"linux", "macosx"}
 source = {
   -- these are initially not required to make it work
   url = "git://github.com/shiva2991/kong-plugin-oauth2-social-login",
-  tag = "0.1.0"
 }
 
 description = {
@@ -30,6 +29,6 @@ build = {
     ["kong.plugins."..pluginName..".authorize"] = "kong/plugins/"..pluginName.."/authorize.lua",
     ["kong.plugins."..pluginName..".callback"] = "kong/plugins/"..pluginName.."/callback.lua",
     ["kong.plugins."..pluginName..".handler"] = "kong/plugins/"..pluginName.."/handler.lua",
-    ["kong.plugins."..pluginName..".schema"] = "kong/plugins/"..pluginName.."/schema.lua"
+    ["kong.plugins."..pluginName..".schema"] = "kong/plugins/"..pluginName.."/schema.lua",
   }
 }

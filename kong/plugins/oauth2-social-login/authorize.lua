@@ -64,7 +64,7 @@ function _M.execute(conf)
   local response_params = {}
   local uri = ngx.var.uri
   local provider_name
-  for name in string_gmatch(uri, "/oauth2/authorize/(%w+)") do
+  for name in string_gmatch(uri, "/oauth2/authorize/" .. SOCIAL .."/(%w+)") do
     provider_name = name
     break
   end
@@ -75,7 +75,7 @@ function _M.execute(conf)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-  if not provider then
+  if not provider or provider.type == SOCIAL then
     return
   end
 
