@@ -2,7 +2,7 @@ local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
 local public_utils = require "kong.tools.public"
-local provider_utils = require "kong.plugins.auth-providers-repo.utils"
+local provider_utils = require "kong.plugins.auth-providers-util.utils"
 
 local string_gmatch = string.gmatch
 local req_get_headers = ngx.req.get_headers
@@ -19,7 +19,6 @@ local CLIENT_SECRET = "client_secret"
 local REDIRECT_URI = "redirect_uri"
 local ERROR = "error"
 local OAUTH2 = "oauth2"
-local SOCIAL = "social"
 
 local function load_oauth2_credential_by_client_id_into_memory(client_id)
   local credentials, err = singletons.dao.oauth2_credentials:find_all {client_id = client_id}
@@ -64,18 +63,19 @@ function _M.execute(conf)
   local response_params = {}
   local uri = ngx.var.uri
   local provider_name
-  for name in string_gmatch(uri, "/oauth2/authorize/" .. SOCIAL .."/(%w+)") do
+  for name in string_gmatch(uri, "/oauth2/authorize/" .. conf.provider_type .. "/(%w+)") do
     provider_name = name
     break
   end
   local provider_cache_key = singletons.dao.auth_providers:cache_key(provider_name)
   local provider, err = singletons.cache:get(provider_cache_key, nil,
                                               provider_utils.load_provider,
-                                              provider_name)
+                                              provider_name,
+                                              conf.provider_type)
   if err then
     return responses.send_HTTP_INTERNAL_SERVER_ERROR(err)
   end
-  if not provider or provider.type == SOCIAL then
+  if not provider then
     return
   end
 
@@ -91,7 +91,8 @@ function _M.execute(conf)
 
   local parameters = provider_utils.retrieve_parameters()
   local response_type = parameters[RESPONSE_TYPE]
-  if not response_type == CODE then
+  -- Check response_type
+  if not ((response_type == CODE and oauth2_plugin.config.enable_authorization_code) or (oauth2_plugin.config.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
     response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid " .. RESPONSE_TYPE}
   end
 

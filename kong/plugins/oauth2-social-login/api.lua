@@ -1,7 +1,7 @@
 local crud = require "kong.api.crud_helpers"
 local url = require "socket.url"
 
-local SOCIAL = "social"
+local SOCIAL = "SOCIAL"
 
 local function validate_uris(v)
   if v then
@@ -35,7 +35,10 @@ end
 return {
   ["/auth_providers/social"] = {
     before = function(self, dao_factory)
-      self.type = SOCIAL
+      self.params.provider_type = SOCIAL
+      self.params.method = "GET"
+      self.params.uri = "/oauth2/authorize/" .. SOCIAL .. "/"
+      self.params.response_type = "REDIRECT"
     end,
 
     GET = function(self, dao_factory)
