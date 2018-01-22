@@ -92,7 +92,7 @@ function _M.execute(conf)
   local parameters = provider_utils.retrieve_parameters()
   local response_type = parameters[RESPONSE_TYPE]
   -- Check response_type
-  if not ((response_type == CODE and oauth2_plugin.config.enable_authorization_code) or (oauth2_plugin.config.enable_implicit_grant and response_type == TOKEN)) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
+  if not (response_type == CODE and oauth2_plugin.config.enable_authorization_code) then -- Authorization Code Grant (http://tools.ietf.org/html/rfc6749#section-4.1.1)
     response_params = {[ERROR] = "unsupported_response_type", error_description = "Invalid " .. RESPONSE_TYPE}
   end
 
