@@ -1,7 +1,6 @@
 local utils = require "kong.tools.utils"
 local responses = require "kong.tools.responses"
 local singletons = require "kong.singletons"
-local public_utils = require "kong.tools.public"
 local provider_utils = require "kong.plugins.auth-providers-util.utils"
 
 local string_gmatch = string.gmatch
